@@ -41,7 +41,7 @@ def main():
             logging.exception("Error scraping %s: %s", site_cfg["id"], e)
             continue
         for item in items:
-            key = f\"{site_cfg['id']}|{item['id']}\"
+            key = f"{site_cfg['id']}|{item['id']}"
             previous = store.get(key)
             should_alert = False
             reason = None
@@ -56,7 +56,7 @@ def main():
                 should_alert = True
                 reason = "back_in_stock"
             if should_alert:
-                text = template.format(title=item.get("title","(sin título)")[:200], price=f\"{item.get('price')}\", url=item.get("url"))
+                text = template.format(title=item.get("title","(sin título)")[:200], price=f"{item.get('price')}", url=item.get("url"))
                 alerts.append((key, item, text, reason))
             # update store regardless
             store.set(key, {"price": item.get("price"), "in_stock": item.get("in_stock"), "last_seen": datetime.utcnow().isoformat()})
