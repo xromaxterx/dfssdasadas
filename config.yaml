@@ -1,0 +1,27 @@
+# Configurable list of sites and parameters.
+interval_minutes: 60  # Only indicative; workflow triggers hourly by default.
+sites:
+  - id: amazon_es
+    name: "Amazon España - Ofertas"
+    enabled: true
+    # You can add keywords to track specific product families (optional).
+    keywords: ["ofertas", "chollo", "gaming", "portátil"]
+    price_threshold_eur: 100.0  # default threshold for sending alerts for new finds
+  - id: pccomponentes
+    name: "PcComponentes - Ofertas"
+    enabled: true
+    keywords: ["oferta", "descuento", "monitor"]
+    price_threshold_eur: 80.0
+  - id: fnac
+    name: "Fnac - Ofertas"
+    enabled: false
+    keywords: []
+    price_threshold_eur: 50.0
+  - id: mediamarkt
+    name: "MediaMarkt - Ofertas"
+    enabled: false
+    keywords: []
+    price_threshold_eur: 50.0
+
+# Twitter post template (can include placeholders)
+tweet_template: "📣 Oferta detectada: {title} — {price}€. {url}"
