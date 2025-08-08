@@ -26,7 +26,9 @@ def main():
     if not any_enabled:
         logging.warning("No sites enabled in config.yaml — exiting.")
         return 0
+
     alerts = []
+
     for site_cfg in sites:
         if not site_cfg.get("enabled", False):
             continue
@@ -34,32 +36,50 @@ def main():
         if not scraper:
             logging.warning("No scraper for %s", site_cfg["id"])
             continue
+
         logging.info("Scraping %s", site_cfg["name"])
         try:
             items = scraper.scrape()
         except Exception as e:
             logging.exception("Error scraping %s: %s", site_cfg["id"], e)
             continue
+
         for item in items:
             key = f"{site_cfg['id']}|{item['id']}"
             previous = store.get(key)
             should_alert = False
             reason = None
+
             # Price-based alert
             threshold = site_cfg.get("price_threshold_eur")
             if item.get("price") is not None and threshold is not None:
                 if item["price"] <= threshold and (not previous or previous.get("price", 999999) > item["price"]):
                     should_alert = True
-                    reason = f\"price_below_threshold ({item['price']} <= {threshold})\"
+                    reason = f"price_below_threshold ({item['price']} <= {threshold})"
+
             # Stock-reavailability alert
             if item.get("in_stock") and previous and not previous.get("in_stock", False):
                 should_alert = True
                 reason = "back_in_stock"
+
             if should_alert:
-                text = template.format(title=item.get("title","(sin título)")[:200], price=f"{item.get('price')}", url=item.get("url"))
+                text = template.format(
+                    title=item.get("title", "(sin título)")[:200],
+                    price=f"{item.get('price')}",
+                    url=item.get("url")
+                )
                 alerts.append((key, item, text, reason))
+
             # update store regardless
-            store.set(key, {"price": item.get("price"), "in_stock": item.get("in_stock"), "last_seen": datetime.utcnow().isoformat()})
+            store.set(
+                key,
+                {
+                    "price": item.get("price"),
+                    "in_stock": item.get("in_stock"),
+                    "last_seen": datetime.utcnow().isoformat()
+                }
+            )
+
     # Post alerts
     for key, item, text, reason in alerts:
         logging.info("Alerting %s — %s", key, reason)
@@ -67,6 +87,7 @@ def main():
             twitter.post(text)
         except Exception as e:
             logging.exception("Failed to post tweet: %s", e)
+
     store.save()
     logging.info("Run complete. Alerts posted: %d", len(alerts))
     return 0
