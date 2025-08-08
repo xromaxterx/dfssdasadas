@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys, yaml, json, time, logging
+import os, sys, yaml, json, logging
 from datetime import datetime
 from scrapers import get_site_scraper
 from storage import StateStore
@@ -28,6 +28,7 @@ def main():
         return 0
 
     alerts = []
+    first_run = (len(store._data) == 0)  # Si no hay datos guardados, es la primera vez
 
     for site_cfg in sites:
         if not site_cfg.get("enabled", False):
@@ -49,18 +50,21 @@ def main():
             previous = store.get(key)
             should_alert = False
             reason = None
-
-            # Price-based alert
             threshold = site_cfg.get("price_threshold_eur")
-            if item.get("price") is not None and threshold is not None:
-                if item["price"] <= threshold and (not previous or previous.get("price", 999999) > item["price"]):
-                    should_alert = True
-                    reason = f"price_below_threshold ({item['price']} <= {threshold})"
 
-            # Stock-reavailability alert
-            if item.get("in_stock") and previous and not previous.get("in_stock", False):
+            if first_run:
+                # Publicar todo en la primera ejecución
                 should_alert = True
-                reason = "back_in_stock"
+                reason = "initial_load"
+            else:
+                # Reglas normales después de la primera vez
+                if item.get("price") is not None and threshold is not None:
+                    if item["price"] <= threshold and (not previous or previous.get("price", 999999) > item["price"]):
+                        should_alert = True
+                        reason = f"price_below_threshold ({item['price']} <= {threshold})"
+                if item.get("in_stock") and previous and not previous.get("in_stock", False):
+                    should_alert = True
+                    reason = "back_in_stock"
 
             if should_alert:
                 text = template.format(
@@ -70,7 +74,7 @@ def main():
                 )
                 alerts.append((key, item, text, reason))
 
-            # update store regardless
+            # Actualizar estado
             store.set(
                 key,
                 {
@@ -80,7 +84,7 @@ def main():
                 }
             )
 
-    # Post alerts
+    # Publicar alertas
     for key, item, text, reason in alerts:
         logging.info("Alerting %s — %s", key, reason)
         try:
